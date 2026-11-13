@@ -45,3 +45,28 @@ class Sum(Base):
         expect(
             node, inputs=[data_0, data_1], outputs=[result], name="test_sum_two_inputs"
         )
+
+    @staticmethod
+    def export_float16_large_values() -> None:
+        # Sequential float16 addition saturates early and ends in inf even
+        # when the true result is representable: 60000 + 60000 overflows and
+        # inf - 60000 stays inf. Expected outputs are computed in float32.
+        data_0 = np.full((2, 2), 60000).astype(np.float16)
+        data_1 = np.full((2, 2), 60000).astype(np.float16)
+        data_2 = np.full((2, 2), -60000).astype(np.float16)
+        result = (
+            data_0.astype(np.float32)
+            + data_1.astype(np.float32)
+            + data_2.astype(np.float32)
+        ).astype(np.float16)
+        node = onnx.helper.make_node(
+            "Sum",
+            inputs=["data_0", "data_1", "data_2"],
+            outputs=["result"],
+        )
+        expect(
+            node,
+            inputs=[data_0, data_1, data_2],
+            outputs=[result],
+            name="test_sum_float16_large_values",
+        )

@@ -20,6 +20,22 @@ class CumSum(Base):
         expect(node, inputs=[x, axis], outputs=[y], name="test_cumsum_1d")
 
     @staticmethod
+    def export_float16_large_values() -> None:
+        # Sequential float16 accumulation saturates below still-representable
+        # partial sums: 2048 + 1 rounds back to 2048, so every later partial
+        # sum is stuck at 2048. Expected outputs are computed in float32.
+        x = np.array([2047, 1, 1, 1, 1]).astype(np.float16)
+        axis = np.int32(0)
+        y = np.cumsum(x.astype(np.float32), axis=0).astype(np.float16)
+        node = onnx.helper.make_node("CumSum", inputs=["x", "axis"], outputs=["y"])
+        expect(
+            node,
+            inputs=[x, axis],
+            outputs=[y],
+            name="test_cumsum_float16_large_values",
+        )
+
+    @staticmethod
     def export_cumsum_1d_exclusive() -> None:
         node = onnx.helper.make_node(
             "CumSum", inputs=["x", "axis"], outputs=["y"], exclusive=1
